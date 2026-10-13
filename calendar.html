@@ -1,0 +1,507 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>多功能日程日历</title>
+  <!-- Tailwind CSS -->
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script>
+    tailwind.config = {
+      darkMode: 'class',
+    }
+  </script>
+  <style>
+    /* 移动端滚动条美化 */
+    ::-webkit-scrollbar { width: 4px; height: 4px; }
+    ::-webkit-scrollbar-thumb { background: #cbd5e1; border-radius: 4px; }
+    .dark ::-webkit-scrollbar-thumb { background: #475569; }
+  </style>
+</head>
+<body class="bg-gray-50 text-gray-800 dark:bg-zinc-900 dark:text-gray-100 min-h-screen transition-colors duration-200">
+
+  <div id="mainCalendarView" class="max-w-6xl mx-auto p-3 sm:p-6">
+    <!-- 顶部导航与控制器 -->
+    <header class="flex flex-col md:flex-row md:items-center justify-between gap-4 bg-white dark:bg-zinc-800 p-4 rounded-xl shadow-sm mb-6 border border-gray-100 dark:border-zinc-700">
+      <div class="flex items-center justify-between">
+        <h1 class="text-xl sm:text-2xl font-bold flex items-center gap-2">
+          📅 <span id="currentMonthLabel">日历</span>
+        </h1>
+        <button id="themeToggleBtnMobile" class="md:hidden p-2 rounded-lg bg-gray-100 dark:bg-zinc-700 text-sm">🌙</button>
+      </div>
+
+      <!-- 控制工具栏 -->
+      <div class="flex flex-wrap items-center gap-2 sm:gap-3 text-sm">
+        <div class="flex items-center gap-1.5 bg-gray-50 dark:bg-zinc-700/50 px-2.5 py-1.5 rounded-lg border border-gray-200 dark:border-zinc-600">
+          <label for="startDatePicker" class="text-xs text-gray-500 dark:text-gray-400 whitespace-nowrap">跳转:</label>
+          <input type="date" id="startDatePicker" class="bg-transparent text-xs sm:text-sm focus:outline-none dark:text-gray-200 cursor-pointer">
+        </div>
+
+        <!-- 每周起始日选择 -->
+        <div class="flex items-center gap-1.5 bg-gray-50 dark:bg-zinc-700/50 px-2.5 py-1.5 rounded-lg border border-gray-200 dark:border-zinc-600">
+          <label for="weekStartSelect" class="text-xs text-gray-500 dark:text-gray-400 whitespace-nowrap">周首日:</label>
+          <select id="weekStartSelect" class="bg-transparent text-xs sm:text-sm focus:outline-none dark:text-gray-200 dark:bg-zinc-800 cursor-pointer">
+            <option value="0">周日</option>
+            <option value="1">周一</option>
+            <option value="2">周二</option>
+            <option value="3">周三</option>
+            <option value="4">周四</option>
+            <option value="5">周五</option>
+            <option value="6">周六</option>
+          </select>
+        </div>
+
+        <div class="flex items-center bg-gray-100 dark:bg-zinc-700 rounded-lg p-0.5">
+          <button id="prevMonthBtn" class="px-2.5 py-1 hover:bg-white dark:hover:bg-zinc-600 rounded text-sm transition font-bold cursor-pointer">◀</button>
+          <button id="todayBtn" class="px-2.5 py-1 hover:bg-white dark:hover:bg-zinc-600 rounded text-xs transition cursor-pointer">今天</button>
+          <button id="nextMonthBtn" class="px-2.5 py-1 hover:bg-white dark:hover:bg-zinc-600 rounded text-sm transition font-bold cursor-pointer">▶</button>
+        </div>
+
+        <button id="openTaskModalBtn" class="bg-blue-600 hover:bg-blue-700 text-white font-medium px-3.5 py-1.5 rounded-lg transition shadow-sm text-xs sm:text-sm flex items-center gap-1 cursor-pointer">
+          <span>+</span> 新建任务
+        </button>
+
+        <button id="themeToggleBtn" class="hidden md:flex items-center gap-1.5 p-2 rounded-lg bg-gray-100 dark:bg-zinc-700 hover:bg-gray-200 dark:hover:bg-zinc-600 transition cursor-pointer">
+          <span id="themeIcon">🌙</span>
+        </button>
+      </div>
+    </header>
+
+    <!-- 星期表头 -->
+    <div id="weekdaysHeader" class="grid grid-cols-7 gap-1 text-center font-semibold text-xs sm:text-sm text-gray-400 dark:text-gray-500 mb-2"></div>
+
+    <!-- 日历主表格 -->
+    <div id="calendarGrid" class="grid grid-cols-7 gap-1 sm:gap-2">
+      <!-- 动态生成 -->
+    </div>
+  </div>
+
+  <!-- 当日详情页面 (默认隐藏) -->
+  <div id="dayDetailContainer" class="max-w-3xl mx-auto p-4 sm:p-6 hidden">
+    <div class="bg-white dark:bg-zinc-800 rounded-2xl shadow-sm border border-gray-100 dark:border-zinc-700 overflow-hidden">
+      <!-- 头部 -->
+      <div class="p-4 sm:p-6 border-b border-gray-100 dark:border-zinc-700 flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
+        <div>
+          <button id="backToCalendarBtn" class="text-sm text-gray-500 hover:text-blue-600 dark:hover:text-blue-400 mb-2 flex items-center gap-1 transition cursor-pointer">
+            ◀ 返回日历
+          </button>
+          <h2 id="detailDateLabel" class="text-2xl font-bold text-gray-800 dark:text-gray-100">YYYY年M月D日</h2>
+        </div>
+        <button id="detailAddTaskBtn" class="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg text-sm transition cursor-pointer shadow-sm">
+          + 新建当天任务
+        </button>
+      </div>
+      
+      <!-- 任务列表 -->
+      <div class="p-4 sm:p-6 min-h-[300px]">
+        <div id="detailTaskList" class="space-y-3">
+          <!-- 动态渲染当天任务 -->
+        </div>
+        <div id="detailEmptyState" class="hidden text-center py-12 text-gray-400 dark:text-zinc-500 text-sm">
+          当天没有任务哦 ~
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- 弹窗 1：创建任务 -->
+  <div id="taskModal" class="fixed inset-0 bg-black/50 backdrop-blur-sm z-50 flex items-center justify-center p-4 hidden">
+    <div class="bg-white dark:bg-zinc-800 rounded-2xl w-full max-w-md p-6 shadow-xl border border-gray-100 dark:border-zinc-700">
+      <h2 class="text-lg font-bold mb-4">新建待办任务</h2>
+      <form id="taskForm" class="space-y-4">
+        <div>
+          <label class="block text-xs text-gray-500 mb-1">任务名称</label>
+          <input type="text" id="taskTitleInput" required placeholder="如：早起背单词、跑步 3 公里" class="w-full px-3 py-2 rounded-lg border border-gray-300 dark:border-zinc-600 dark:bg-zinc-700 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500">
+        </div>
+        <div class="grid grid-cols-2 gap-3">
+          <div>
+            <label class="block text-xs text-gray-500 mb-1">起始日期</label>
+            <input type="date" id="taskStartInput" required class="w-full px-3 py-2 rounded-lg border border-gray-300 dark:border-zinc-600 dark:bg-zinc-700 text-sm focus:outline-none">
+          </div>
+          <div>
+            <label class="block text-xs text-gray-500 mb-1">结束日期</label>
+            <input type="date" id="taskEndInput" required class="w-full px-3 py-2 rounded-lg border border-gray-300 dark:border-zinc-600 dark:bg-zinc-700 text-sm focus:outline-none">
+          </div>
+        </div>
+        <div class="flex justify-end gap-2 pt-2">
+          <button type="button" id="closeTaskModalBtn" class="px-4 py-2 rounded-lg border border-gray-300 dark:border-zinc-600 text-sm hover:bg-gray-100 dark:hover:bg-zinc-700 transition cursor-pointer">取消</button>
+          <button type="submit" class="px-4 py-2 rounded-lg bg-blue-600 text-white text-sm font-medium hover:bg-blue-700 transition cursor-pointer">创建</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <!-- 弹窗 2：取消/删除任务 -->
+  <div id="deleteModal" class="fixed inset-0 bg-black/50 backdrop-blur-sm z-50 flex items-center justify-center p-4 hidden">
+    <div class="bg-white dark:bg-zinc-800 rounded-2xl w-full max-w-sm p-6 shadow-xl border border-gray-100 dark:border-zinc-700">
+      <h2 class="text-base font-bold text-red-600 mb-1">取消/删除任务</h2>
+      <p class="text-xs text-gray-500 mb-4">此操作需要输入安全密码以防误删（默认密码：<span class="font-mono font-bold text-blue-500">1234</span>）。</p>
+      <form id="deleteForm" class="space-y-3">
+        <input type="password" id="passwordInput" placeholder="请输入密码" class="w-full px-3 py-2 rounded-lg border border-gray-300 dark:border-zinc-600 dark:bg-zinc-700 text-sm focus:outline-none">
+        <p id="passwordError" class="text-xs text-red-500 hidden">密码错误，请重试！</p>
+        <div class="flex justify-end gap-2 pt-2">
+          <button type="button" id="closeDeleteModalBtn" class="px-3 py-1.5 rounded-lg border border-gray-300 dark:border-zinc-600 text-xs hover:bg-gray-100 dark:hover:bg-zinc-700 cursor-pointer">放弃</button>
+          <button type="submit" class="px-3.5 py-1.5 rounded-lg bg-red-600 text-white text-xs font-medium hover:bg-red-700 cursor-pointer">确认删除</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <script>
+    /* 
+     * ==========================================================================
+     * 【⚠️ 数据安全与后续维护避坑指南 - 绝对不要改动以下配置】
+     * 
+     * 1. 严禁改动存储键名（Key）：
+     *    STORAGE_KEY 和 THEME_KEY 的值绝对不要修改！
+     *    浏览器依此认领手机本地数据，一旦改动（如改成 v3），历史任务就会被锁死在旧键名中读不出来。
+     * 
+     * 2. 保持 Cloudflare 项目域名不变：
+     *    手机中的 localStorage 数据与网址（如 xxx.pages.dev）强绑定。
+     *    如果更改 Cloudflare 项目名导致网址变动，手机会视为全新站点，旧数据无法跨域名继承。
+     * 
+     * 3. 新增任务属性时做好向下兼容：
+     *    若未来给任务新增字段（如优先级 priority、标签 tag），读取老数据时必须给默认兜底值
+     *    例如：task.priority = task.priority || '普通'; 避免旧数据因缺少新字段报错。
+     * ==========================================================================
+     */
+    // --- 【防阻断存储器】解决 VS Code 沙盒报错核心 ---
+    const STORAGE_KEY = 'calendar_tasks_v2';
+    const THEME_KEY = 'calendar_theme_v2';
+    const SECURITY_PASSWORD = '1234';
+
+    let _memoryTasks = []; // 后备内存
+    const StorageHelper = {
+      getTasks() {
+        try { return JSON.parse(localStorage.getItem(STORAGE_KEY)) || []; } 
+        catch (e) { console.warn("使用本地内存运行"); return _memoryTasks; }
+      },
+      saveTasks(data) {
+        _memoryTasks = data;
+        try { localStorage.setItem(STORAGE_KEY, JSON.stringify(data)); } 
+        catch (e) {}
+      },
+      getTheme() {
+        try { return localStorage.getItem(THEME_KEY); } catch (e) { return null; }
+      },
+      setTheme(val) {
+        try { localStorage.setItem(THEME_KEY, val); } catch (e) {}
+      }
+    };
+
+    let currentDate = new Date(); 
+    let tasks = StorageHelper.getTasks();
+    let pendingDeleteTaskId = null;
+
+    // 每周首日状态（0代表周日，1代表周一...并本地记住设置）
+    let startDayOfWeek = parseInt(localStorage.getItem('calendar_start_day') || '0');
+    const weekStartSelect = document.getElementById('weekStartSelect');
+    if (weekStartSelect) {
+      weekStartSelect.value = startDayOfWeek;
+      weekStartSelect.onchange = (e) => {
+        startDayOfWeek = parseInt(e.target.value);
+        try { localStorage.setItem('calendar_start_day', startDayOfWeek); } catch (err) {}
+        renderCalendar();
+      };
+    }
+
+    // --- DOM 节点 ---
+    const calendarGrid = document.getElementById('calendarGrid');
+    const currentMonthLabel = document.getElementById('currentMonthLabel');
+    const startDatePicker = document.getElementById('startDatePicker');
+    const taskModal = document.getElementById('taskModal');
+    const deleteModal = document.getElementById('deleteModal');
+
+    // --- 日期工具 ---
+    function formatDate(d) {
+      const year = d.getFullYear();
+      const month = String(d.getMonth() + 1).padStart(2, '0');
+      const day = String(d.getDate()).padStart(2, '0');
+      return `${year}-${month}-${day}`;
+    }
+
+    // --- 核心渲染逻辑 ---
+    function renderCalendar() {
+      calendarGrid.innerHTML = '';
+      const year = currentDate.getFullYear();
+      const month = currentDate.getMonth();
+
+      currentMonthLabel.textContent = `${year}年 ${month + 1}月`;
+      startDatePicker.value = formatDate(currentDate);
+
+// 动态更新星期表头顺序
+      const weekNames = ['日', '一', '二', '三', '四', '五', '六'];
+      const weekdaysHeader = document.getElementById('weekdaysHeader');
+      if (weekdaysHeader) {
+        weekdaysHeader.innerHTML = Array.from({ length: 7 }, (_, i) => 
+          `<div>${weekNames[(startDayOfWeek + i) % 7]}</div>`
+        ).join('');
+      }
+
+      const firstDay = new Date(year, month, 1).getDay();
+      const daysInMonth = new Date(year, month + 1, 0).getDate();
+      const prevMonthDays = new Date(year, month, 0).getDate();
+      const todayStr = formatDate(new Date());
+
+      // 根据自定义周首日，动态计算前置空白格子数量
+      const blanks = (firstDay - startDayOfWeek + 7) % 7;
+
+      // 填充上月占位格
+      for (let i = blanks - 1; i >= 0; i--) {
+        const cell = document.createElement('div');
+        cell.className = 'min-h-[70px] sm:min-h-[110px] p-1.5 rounded-xl bg-gray-100/50 dark:bg-zinc-800/30 opacity-40 text-xs text-gray-400';
+        cell.innerHTML = `<span>${prevMonthDays - i}</span>`;
+        calendarGrid.appendChild(cell);
+      }
+
+      // 填充当月实际日期
+      for (let day = 1; day <= daysInMonth; day++) {
+        const cellDateStr = formatDate(new Date(year, month, day));
+        const isToday = cellDateStr === todayStr;
+
+        const cell = document.createElement('div');
+        cell.className = `min-h-[70px] sm:min-h-[110px] p-1.5 sm:p-2 rounded-xl border flex flex-col transition ${isToday ? 'bg-blue-50/50 dark:bg-blue-950/20 border-blue-300' : 'bg-white dark:bg-zinc-800/80 border-gray-100 dark:border-zinc-700/60'}`;
+
+        const head = document.createElement('div');
+        head.className = 'flex items-center justify-between mb-1';
+        head.innerHTML = `
+          <span class="text-xs sm:text-sm font-semibold ${isToday ? 'text-blue-600 font-bold' : ''}">${day}</span>
+          <div class="flex gap-1">
+            <button class="text-[10px] sm:text-xs text-blue-500 hover:text-blue-700 px-1 hover:bg-blue-50 dark:hover:bg-blue-900/30 rounded cursor-pointer" onclick="openDayDetail('${cellDateStr}')" title="查看当天详情">详情</button>
+            <button class="text-xs text-gray-400 hover:text-blue-500 hover:bg-gray-100 dark:hover:bg-zinc-700 w-5 h-5 rounded-full flex items-center justify-center font-bold cursor-pointer" onclick="openModalWithDate('${cellDateStr}')" title="添加任务">+</button>
+          </div>
+        `;
+        cell.appendChild(head);
+
+        const taskList = document.createElement('div');
+        taskList.className = 'flex-1 space-y-1 overflow-y-auto max-h-[60px] sm:max-h-[85px]';
+
+        const dayTasks = tasks.filter(t => cellDateStr >= t.startDate && cellDateStr <= t.endDate);
+        dayTasks.forEach(task => {
+          const isDone = (task.completedDates || []).includes(cellDateStr);
+          const item = document.createElement('div');
+          
+          item.className = `group text-[11px] sm:text-xs px-2 py-1 rounded flex items-center justify-between gap-1 cursor-pointer select-none ${isDone ? 'bg-gray-100 dark:bg-zinc-700/60 text-gray-400 line-through' : 'bg-blue-100/70 text-blue-800 dark:bg-blue-900/40 dark:text-blue-200'}`;
+          item.innerHTML = `
+            <span class="truncate">${task.title}</span>
+            <button class="opacity-0 group-hover:opacity-100 text-red-500 text-xs px-1 cursor-pointer" onclick="event.stopPropagation(); triggerDelete('${task.id}')">✕</button>
+          `;
+          item.onclick = () => toggleTaskComplete(task.id, cellDateStr);
+          taskList.appendChild(item);
+        });
+
+        cell.appendChild(taskList);
+        calendarGrid.appendChild(cell);
+      }
+    }
+
+    // --- 【防溢出】安全的月份切换 ---
+    function safeChangeMonth(offset) {
+      // 始终将日期设定为 1 号，防止 31 号翻页时因下个月天数不足发生跳月 Bug
+      currentDate = new Date(currentDate.getFullYear(), currentDate.getMonth() + offset, 1);
+      renderCalendar();
+    }
+
+    // --- 按钮事件绑定 ---
+    document.getElementById('prevMonthBtn').onclick = () => safeChangeMonth(-1);
+    document.getElementById('nextMonthBtn').onclick = () => safeChangeMonth(1);
+    document.getElementById('todayBtn').onclick = () => { currentDate = new Date(); renderCalendar(); };
+
+    startDatePicker.onchange = (e) => {
+      if (e.target.value) {
+        currentDate = new Date(e.target.value + 'T00:00:00');
+        renderCalendar();
+      }
+    };
+
+    // --- 任务打卡状态切换 ---
+    function toggleTaskComplete(taskId, dateStr) {
+      tasks = tasks.map(t => {
+        if (t.id === taskId) {
+          const doneList = t.completedDates || [];
+          return { ...t, completedDates: doneList.includes(dateStr) ? doneList.filter(d => d !== dateStr) : [...doneList, dateStr] };
+        }
+        return t;
+      });
+      StorageHelper.saveTasks(tasks);
+      renderCalendar();
+    }
+
+    // --- 模态框逻辑 ---
+    window.openModalWithDate = (dateStr) => {
+      document.getElementById('taskStartInput').value = dateStr;
+      document.getElementById('taskEndInput').value = dateStr;
+      taskModal.classList.remove('hidden');
+    };
+
+    document.getElementById('openTaskModalBtn').onclick = () => openModalWithDate(formatDate(new Date()));
+    document.getElementById('closeTaskModalBtn').onclick = () => taskModal.classList.add('hidden');
+
+
+    // --- 删除逻辑 ---
+    window.triggerDelete = (taskId) => {
+      pendingDeleteTaskId = taskId;
+      document.getElementById('passwordInput').value = '';
+      document.getElementById('passwordError').classList.add('hidden');
+      deleteModal.classList.remove('hidden');
+    };
+
+    document.getElementById('closeDeleteModalBtn').onclick = () => deleteModal.classList.add('hidden');
+    
+
+    // --- 深色模式初始化 ---
+    function toggleTheme() {
+      const isDark = document.documentElement.classList.toggle('dark');
+      StorageHelper.setTheme(isDark ? 'dark' : 'light');
+      document.getElementById('themeIcon').textContent = isDark ? '☀️' : '🌙';
+      document.getElementById('themeToggleBtnMobile').textContent = isDark ? '☀️' : '🌙';
+    }
+    document.getElementById('themeToggleBtn').onclick = toggleTheme;
+    document.getElementById('themeToggleBtnMobile').onclick = toggleTheme;
+
+    const savedTheme = StorageHelper.getTheme();
+    if (savedTheme === 'dark' || (!savedTheme && window.matchMedia('(prefers-color-scheme: dark)').matches)) {
+      document.documentElement.classList.add('dark');
+      document.getElementById('themeIcon').textContent = '☀️';
+      document.getElementById('themeToggleBtnMobile').textContent = '☀️';
+    }
+
+    // --- 详情页面逻辑 ---
+    const mainCalendarView = document.getElementById('mainCalendarView');
+    const dayDetailContainer = document.getElementById('dayDetailContainer');
+    const detailDateLabel = document.getElementById('detailDateLabel');
+    const detailTaskList = document.getElementById('detailTaskList');
+    const detailEmptyState = document.getElementById('detailEmptyState');
+    let currentDetailDate = null;
+
+    // 打开详情页
+    window.openDayDetail = function(dateStr) {
+      currentDetailDate = dateStr;
+      
+      // 格式化标题
+      const d = new Date(dateStr + 'T00:00:00');
+      detailDateLabel.textContent = `${d.getFullYear()}年 ${d.getMonth() + 1}月 ${d.getDate()}日`;
+      
+      // 切换视图
+      mainCalendarView.classList.add('hidden');
+      dayDetailContainer.classList.remove('hidden');
+      
+      renderDetailList();
+    };
+
+    // 返回主日历
+    document.getElementById('backToCalendarBtn').onclick = () => {
+      dayDetailContainer.classList.add('hidden');
+      mainCalendarView.classList.remove('hidden');
+      currentDetailDate = null;
+      renderCalendar(); // 刷新一下日历，保证状态同步
+    };
+
+    // 详情页里的“新建任务”
+    document.getElementById('detailAddTaskBtn').onclick = () => {
+      if (currentDetailDate) {
+        openModalWithDate(currentDetailDate);
+      }
+    };
+
+    // 渲染详情页的任务列表
+    function renderDetailList() {
+      if (!currentDetailDate) return;
+      detailTaskList.innerHTML = '';
+      
+      // 筛选当天任务
+      const dayTasks = tasks.filter(t => currentDetailDate >= t.startDate && currentDetailDate <= t.endDate);
+      
+      if (dayTasks.length === 0) {
+        detailEmptyState.classList.remove('hidden');
+      } else {
+        detailEmptyState.classList.add('hidden');
+        dayTasks.forEach(task => {
+          const isDone = (task.completedDates || []).includes(currentDetailDate);
+          const itemDiv = document.createElement('div');
+          
+          itemDiv.className = `p-3 sm:p-4 rounded-xl border flex items-center justify-between transition-all ${
+            isDone 
+            ? 'bg-gray-50 border-gray-200 dark:bg-zinc-800/50 dark:border-zinc-700/50' 
+            : 'bg-white border-blue-100 hover:border-blue-300 dark:bg-zinc-800 dark:border-zinc-600'
+          }`;
+          
+          itemDiv.innerHTML = `
+            <div class="flex items-center gap-3">
+              <input type="checkbox" ${isDone ? 'checked' : ''} 
+                class="w-5 h-5 rounded border-gray-300 text-blue-600 focus:ring-blue-500 cursor-pointer"
+                onchange="toggleTaskCompleteFromDetail('${task.id}')">
+              <div class="flex flex-col">
+                <span class="text-sm sm:text-base font-medium ${isDone ? 'text-gray-400 line-through' : 'text-gray-800 dark:text-gray-200'}">${task.title}</span>
+                <span class="text-xs text-gray-400 mt-1">周期: ${task.startDate} ~ ${task.endDate}</span>
+              </div>
+            </div>
+            <button class="text-sm text-red-500 hover:text-red-700 px-3 py-1 rounded-lg hover:bg-red-50 dark:hover:bg-red-900/30 transition cursor-pointer" 
+                    onclick="triggerDeleteFromDetail('${task.id}')">
+              删除
+            </button>
+          `;
+          detailTaskList.appendChild(itemDiv);
+        });
+      }
+    }
+
+    // 从详情页触发打卡（会同步更新视图）
+    window.toggleTaskCompleteFromDetail = function(taskId) {
+      if (!currentDetailDate) return;
+      toggleTaskComplete(taskId, currentDetailDate); // 复用之前的函数
+      renderDetailList(); // 重新渲染详情列表
+    };
+
+    // 从详情页触发删除（修改原始删除逻辑的反馈路径）
+    window.triggerDeleteFromDetail = function(taskId) {
+      triggerDelete(taskId); // 打开密码弹窗
+    };
+
+    // 我们需要修改一下原有的删除确认逻辑，让它在详情页也能刷新
+    const originalDeleteSubmit = document.getElementById('deleteForm').onsubmit;
+    document.getElementById('deleteForm').onsubmit = (e) => {
+      e.preventDefault();
+      if (document.getElementById('passwordInput').value === SECURITY_PASSWORD) {
+        tasks = tasks.filter(t => t.id !== pendingDeleteTaskId);
+        StorageHelper.saveTasks(tasks);
+        
+        // 判断当前处于哪个视图，刷新对应的视图
+        if (dayDetailContainer.classList.contains('hidden')) {
+           renderCalendar();
+        } else {
+           renderDetailList();
+        }
+        
+        deleteModal.classList.add('hidden');
+      } else {
+        document.getElementById('passwordError').classList.remove('hidden');
+      }
+    };
+    
+    // 如果在详情页打开了新建弹窗并提交，也需要刷新详情页
+    const originalTaskSubmit = document.getElementById('taskForm').onsubmit;
+    document.getElementById('taskForm').onsubmit = (e) => {
+      e.preventDefault();
+      const title = document.getElementById('taskTitleInput').value.trim();
+      const startDate = document.getElementById('taskStartInput').value;
+      const endDate = document.getElementById('taskEndInput').value;
+      if (startDate > endDate) return alert('起始日期不能大于结束日期！');
+      
+      tasks.push({ id: 't_' + Date.now(), title, startDate, endDate, completedDates: [] });
+      StorageHelper.saveTasks(tasks);
+      
+      taskModal.classList.add('hidden');
+      e.target.reset();
+
+      // 判断视图更新
+      if (dayDetailContainer.classList.contains('hidden')) {
+         renderCalendar();
+      } else {
+         renderDetailList();
+      }
+    };
+    renderCalendar();
+  </script>
+</body>
+</html>
